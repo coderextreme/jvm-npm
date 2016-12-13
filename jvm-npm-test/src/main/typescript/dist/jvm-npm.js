@@ -50,20 +50,19 @@ module = (typeof module == 'undefined') ? {} : module;
         };
         Module.runMain = function (main) {
             var file = Require.resolve(main);
-            Module._load(file, undefined, false, true);
+            Module._load(file.path, undefined, file.core, true);
         };
         return Module;
     }());
     var Require = (function () {
         function Require(id, parent) {
-            var core, native, file = Require.resolve(id, parent);
+            var file = Require.resolve(id, parent);
             if (!file) {
                 if (typeof NativeRequire.require === 'function') {
-                    if (Require.debug) {
+                    if (Require.debug)
                         print('cannot resolve', id, 'defaulting to native');
-                    }
                     try {
-                        native = NativeRequire.require(id);
+                        var native = NativeRequire.require(id);
                         if (native)
                             return native;
                     }
@@ -71,24 +70,19 @@ module = (typeof module == 'undefined') ? {} : module;
                         throw new ModuleError("cannot load module " + id, "MODULE_NOT_FOUND");
                     }
                 }
-                if (Require.debug) {
+                if (Require.debug)
                     print("cannot load module ", id);
-                }
                 throw new ModuleError("cannot load module " + id, "MODULE_NOT_FOUND");
             }
-            if (file.core) {
-                file = file.path;
-                core = true;
-            }
             try {
-                if (Require.cache[file]) {
-                    return Require.cache[file];
+                if (Require.cache[file.path]) {
+                    return Require.cache[file.path];
                 }
-                else if (String(file).endsWith('.js')) {
-                    return Module._load(file, parent, core);
+                else if (String(file.path).endsWith('.js')) {
+                    return Module._load(file.path, parent, file.core);
                 }
-                else if (String(file).endsWith('.json')) {
-                    return loadJSON(file);
+                else if (String(file.path).endsWith('.json')) {
+                    return loadJSON(file.path);
                 }
             }
             catch (ex) {
@@ -109,9 +103,8 @@ module = (typeof module == 'undefined') ? {} : module;
             configurable: true
         });
         Require.resolve = function (id, parent) {
-            if (Require.debug) {
+            if (Require.debug)
                 print("\n\nRESOLVE:", id);
-            }
             var roots = findRoots(parent);
             for (var i = 0; i < roots.length; ++i) {
                 var root = roots[i];
@@ -120,11 +113,9 @@ module = (typeof module == 'undefined') ? {} : module;
                     Resolve.asFile(id, root, '.json') ||
                     Resolve.asDirectory(id, root) ||
                     Resolve.asNodeModule(id, root);
-                if (result) {
+                if (result)
                     return result;
-                }
             }
-            return false;
         };
         ;
         return Require;
@@ -143,9 +134,9 @@ module = (typeof module == 'undefined') ? {} : module;
     }());
     Resolve.asFile = _resolveAsFile;
     Resolve.asDirectory = _resolveAsDirectory;
-    Resolve.readFile = _readFile;
     Resolve.asNodeModule = _resolveAsNodeModule;
     Resolve.asCoreModule = _resolveAsCoreModule;
+    Resolve.readFile = _readFile;
     var indent = 0;
     if (Require.debug) {
         Resolve.asFile = function (id, root, ext) {
@@ -203,9 +194,8 @@ module = (typeof module == 'undefined') ? {} : module;
         return r.concat(Require.paths);
     }
     function findRoot(parent) {
-        if (!parent || !parent.id) {
+        if (!parent || !parent.id)
             return Require.root;
-        }
         var path = (parent.id instanceof java.nio.file.Path) ?
             parent.id :
             Paths.get(parent.id);
@@ -227,7 +217,7 @@ module = (typeof module == 'undefined') ? {} : module;
         var base = [root, 'node_modules'].join('/');
         return Resolve.asFile(id, base) ||
             Resolve.asDirectory(id, base) ||
-            (root ? Resolve.asNodeModule(id, new File(root).getParent()) : false);
+            (root ? Resolve.asNodeModule(id, new File(root).getParent()) : undefined);
     }
     function _resolveAsDirectory(id, root) {
         var base = [root, id].join('/'), file = new File([base, 'package.json'].join('/'));
@@ -250,19 +240,17 @@ module = (typeof module == 'undefined') ? {} : module;
         var file;
         if (id.length > 0 && id[0] === '/') {
             file = new File(normalizeName(id, ext || '.js'));
-            if (!file.exists()) {
+            if (!file.exists())
                 return Resolve.asDirectory(id);
-            }
         }
         else {
             file = new File([root, normalizeName(id, ext || '.js')].join('/'));
         }
         if (file.exists()) {
             var result = file.getCanonicalPath();
-            if (Require.debug) {
+            if (Require.debug)
                 print(repeat(indent - 1), "result:", relativeToRoot(file.toPath()));
-            }
-            return result;
+            return { path: result };
         }
     }
     function _resolveAsCoreModule(id, root) {
