@@ -65,9 +65,10 @@ namespace Resolve {
       (root ? Resolve.asNodeModule(id, new java.io.File(root).getParent()) : undefined);
   }
 
-  function _resolveAsDirectory(id:string, root?):ResolveResult {
+  function _resolveAsDirectory(id:string, root?:Path):ResolveResult {
     var base = [root, id].join('/'),
         file = new java.io.File([base, 'package.json'].join('/'));
+
     if (file.exists()) {
       try {
         var body = Resolve.readFile(file.getCanonicalPath()),
@@ -106,7 +107,7 @@ namespace Resolve {
   function _resolveAsCoreModule(id, root) {
     var name = normalizeName(id);
 
-    if (classloader.getResource(name))
+    if (isResourceResolved(name))
       return { path: name, core: true };
   }
 
@@ -125,22 +126,27 @@ namespace Resolve {
     }
   }
 
-    function relativeToRoot( p:Path ):Path {
+  function isResourceResolved( id:string ):boolean {
+    var url = classloader.getResource( id );
+    return url!=null;
+  }
+
+  function relativeToRoot( p:Path ):Path {
 
       if( p.startsWith(Require.root)) {
         let len = Paths.get(Require.root).getNameCount();
         p = p.subpath(len, p.getNameCount());//.normalize();
       }
       return p;
-    }
+  }
 
-    export function findRoots(parent:Module) {
+  export function findRoots(parent:Module) {
       var r = [];
       r.push( findRoot( parent ) );
       return r.concat( Require.paths );
-    }
+  }
 
-    function findRoot(parent:Module):string {
+  function findRoot(parent:Module):string {
       if (!parent || !parent.id) return Require.root;
 
       var path = ( parent.id instanceof java.nio.file.Path ) ?
@@ -149,20 +155,20 @@ namespace Resolve {
 
       return path.getParent() || "";
 
-    }
+  }
 
-    export function loadJSON(file:string) {
+  export function loadJSON(file:string) {
       var json = JSON.parse(Resolve.readFile(file));
       Require.cache[file] = json;
       return json;
-    }
+  }
 
-    function normalizeName(fileName, extension:string = '.js') {
+  function normalizeName(fileName, extension:string = '.js') {
       if (String(fileName).endsWith(extension)) {
         return fileName;
       }
       return fileName + extension;
-    }
+  }
 
   export function asFile(id:string, root, ext?:string):ResolveResult {
       return Debug.decorate<ResolveResult>( "resolveAsFile", id, root, ext  ).callPR( () => {
@@ -202,7 +208,7 @@ if (typeof require === 'function' && !NativeRequire.require) {
   NativeRequire.require = require;
 }
 
-function ModuleError(message:string, code:string, cause?:any) {
+function ModuleError(message:string, code?:string, cause?:any) {
   this.code     = code    || "UNDEFINED";
   this.message  = message || "Error loading module";
   this.cause    = cause;

@@ -89,7 +89,7 @@ var Resolve;
     }
     function _resolveAsCoreModule(id, root) {
         var name = normalizeName(id);
-        if (classloader.getResource(name))
+        if (isResourceResolved(name))
             return { path: name, core: true };
     }
     function _readFile(filename, core) {
@@ -106,6 +106,10 @@ var Resolve;
         catch (e) {
             throw new ModuleError("Cannot read file [" + input + "]: ", "IO_ERROR", e);
         }
+    }
+    function isResourceResolved(id) {
+        var url = classloader.getResource(id);
+        return url != null;
     }
     function relativeToRoot(p) {
         if (p.startsWith(Require.root)) {
