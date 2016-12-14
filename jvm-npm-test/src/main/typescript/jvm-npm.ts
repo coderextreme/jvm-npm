@@ -149,12 +149,9 @@ namespace Resolve {
   function findRoot(parent:Module):string {
       if (!parent || !parent.id) return Require.root;
 
-      var path = ( parent.id instanceof java.nio.file.Path ) ?
-        (parent.id as Path) :
-        Paths.get( parent.id );
+      var path = Paths.get( parent.id.toString() );
 
-      return path.getParent() || "";
-
+      return path.getParent().toString() || "";
   }
 
   export function loadJSON(file:string) {
