@@ -49,6 +49,5 @@ declare function print(...args: Object[]): any;
 declare var module: any;
 declare var require: Function;
 declare var NativeRequire: any;
-declare var Require: any;
 
 type Path = java.nio.file.Path;

@@ -35,6 +35,7 @@ public class JVMNPMOriginalTest {
     
     @Before
     public void initFactory() {
+    	System.setProperty("jvm-npm.debug", Boolean.toString(false));
         
         prevUserDir = System.getProperty("user.dir");
         
@@ -73,17 +74,18 @@ public class JVMNPMOriginalTest {
     }
     
     
-    @Test @Ignore
+    @Test //@Ignore
     public void nashorn_classloader_load_test() throws ScriptException{
         final ScriptEngine nashorn = manager.getEngineByName("nashorn");
 
         Assert.assertThat(nashorn , IsNull.notNullValue());
         
         
-        final Object o = nashorn.eval( "load('classpath:java8/nashorn_test.js');" );
+        System.setProperty("jvm-npm.debug", Boolean.toString(true));
+        final Object o = nashorn.eval( "load('classpath:nashorn-requireSpecCL.js');" );
         
         Assert.assertThat( o, IsNull.notNullValue());
-        Assert.assertThat( String.valueOf(o), IsEqual.equalTo("HELLO MODULE LOADED FORM CLASSPATH"));
+        //Assert.assertThat( String.valueOf(o), IsEqual.equalTo("HELLO MODULE LOADED FORM CLASSPATH"));
     }
     
 
