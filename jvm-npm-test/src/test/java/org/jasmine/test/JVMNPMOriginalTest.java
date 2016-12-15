@@ -57,7 +57,9 @@ public class JVMNPMOriginalTest {
         final ScriptEngine nashorn = manager.getEngineByName("nashorn");
 
         Assert.assertThat(nashorn , IsNull.notNullValue());
-        
+
+        //System.setProperty("jvm-npm.debug", Boolean.toString(true));
+       
         nashorn.eval( format("load('%s');", nashornRequireSpecs) );
 
         
@@ -80,8 +82,8 @@ public class JVMNPMOriginalTest {
 
         Assert.assertThat(nashorn , IsNull.notNullValue());
         
-        
         System.setProperty("jvm-npm.debug", Boolean.toString(true));
+        
         nashorn.eval( "load('classpath:nashorn-requireSpecCL.js');" );
         
         //Assert.assertThat( o, IsNull.notNullValue());

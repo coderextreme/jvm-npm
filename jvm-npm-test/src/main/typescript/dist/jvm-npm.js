@@ -1,5 +1,5 @@
 module = (typeof module == 'undefined') ? {} : module;
-var System = java.lang.System, Scanner = java.util.Scanner, Paths = java.nio.file.Paths, Thread = java.lang.Thread;
+var System = java.lang.System, Scanner = java.util.Scanner, Paths = java.nio.file.Paths, Files = java.nio.file.Files, Thread = java.lang.Thread;
 var Debug;
 (function (Debug) {
     var indents = 0;
@@ -48,16 +48,16 @@ var Resolve;
 (function (Resolve) {
     var classloader = Thread.currentThread().getContextClassLoader();
     function _resolveAsNodeModule(id, root) {
-        var base = [root, 'node_modules'].join('/');
+        var base = root.resolve('node_modules');
         return Resolve.asFile(id, base) ||
             Resolve.asDirectory(id, base) ||
-            (root ? Resolve.asNodeModule(id, new java.io.File(root).getParent()) : undefined);
+            (root ? Resolve.asNodeModule(id, root.getParent()) : undefined);
     }
     function _resolveAsDirectory(id, root) {
-        var base = [root, id].join('/'), file = new java.io.File([base, 'package.json'].join('/'));
-        if (file.exists()) {
+        var base = root.resolve(id), file = base.resolve('package.json');
+        if (Files.exists(file)) {
             try {
-                var body = Resolve.readFile(file.getCanonicalPath()), package = JSON.parse(body);
+                var body = Resolve.readFile(file), package = JSON.parse(body);
                 if (package.main) {
                     return (Resolve.asFile(package.main, base) ||
                         Resolve.asDirectory(package.main, base));
@@ -71,19 +71,19 @@ var Resolve;
         return Resolve.asFile('index.js', base);
     }
     function _resolveAsFile(id, root, ext) {
-        var file;
-        if (id.length > 0 && id[0] === '/') {
-            file = new java.io.File(normalizeName(id, ext || '.js'));
-            if (!file.exists())
-                return Resolve.asDirectory(id);
+        var name = normalizeName(id, ext || '.js');
+        var file = Paths.get(name);
+        if (file.isAbsolute()) {
+            if (!Files.exists(file))
+                return Resolve.asDirectory(id, root);
         }
         else {
-            file = new java.io.File([root, normalizeName(id, ext || '.js')].join('/'));
+            file = root.resolve(name).normalize();
         }
-        if (file.exists()) {
-            var result = file.getCanonicalPath();
-            if (Debug.isEnabled())
-                print("file:", relativeToRoot(file.toPath()));
+        if (Files.exists(file)) {
+            var result = file.toFile().getCanonicalPath();
+            if (Debug.isEnabled() || true)
+                print("result:", relativeToRoot(file));
             return { path: result };
         }
     }
@@ -120,17 +120,17 @@ var Resolve;
     }
     function findRoots(parent) {
         var r = [];
-        r.push(findRoot(parent));
+        var p = findRoot(parent);
+        if (p)
+            r.push(p);
         return r.concat(Require.paths);
     }
     Resolve.findRoots = findRoots;
     function findRoot(parent) {
         if (!parent || !parent.id)
             return Require.root;
-        var path = (parent.id instanceof java.nio.file.Path) ?
-            parent.id :
-            Paths.get(parent.id);
-        return path.getParent() || "";
+        var path = Paths.get(parent.id.toString());
+        return path.getParent().toString() || undefined;
     }
     function loadJSON(file) {
         var json = JSON.parse(Resolve.readFile(file));
@@ -138,12 +138,12 @@ var Resolve;
         return json;
     }
     Resolve.loadJSON = loadJSON;
-    function normalizeName(fileName, extension) {
-        if (extension === void 0) { extension = '.js'; }
-        if (String(fileName).endsWith(extension)) {
+    function normalizeName(fileName, ext) {
+        if (ext === void 0) { ext = '.js'; }
+        if (String(fileName).endsWith(ext)) {
             return fileName;
         }
-        return fileName + extension;
+        return fileName + ext;
     }
     function asFile(id, root, ext) {
         return Debug.decorate("resolveAsFile", id, root, ext).callPR(function () {
@@ -170,8 +170,9 @@ var Resolve;
     }
     Resolve.asCoreModule = asCoreModule;
     function readFile(filename, core) {
-        return Debug.decorate("readFile", filename, core).callNPR(function () {
-            return _readFile(filename, core);
+        var path = filename.toString();
+        return Debug.decorate("readFile", path, core).callNPR(function () {
+            return _readFile(path, core);
         });
     }
     Resolve.readFile = readFile;
@@ -275,7 +276,7 @@ var Require = (function () {
             print("\n\nRESOLVE:", id);
         var roots = Resolve.findRoots(parent);
         for (var i = 0; i < roots.length; ++i) {
-            var root = roots[i];
+            var root = Paths.get(roots[i]);
             var result = Resolve.asCoreModule(id, root) ||
                 Resolve.asFile(id, root, '.js') ||
                 Resolve.asFile(id, root, '.json') ||
