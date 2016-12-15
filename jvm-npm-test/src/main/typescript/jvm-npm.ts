@@ -60,15 +60,17 @@ namespace Resolve {
   let classloader = Thread.currentThread().getContextClassLoader();
 
   function _resolveAsNodeModule(id:string, root:Path):ResolveResult {
+    if( !root ) return;
+
     var base = root.resolve('node_modules');
     return Resolve.asFile(id, base) ||
       Resolve.asDirectory(id, base) ||
-      (root ? Resolve.asNodeModule(id, root.getParent()) : undefined);
+      Resolve.asNodeModule(id, root.getParent());
   }
 
   function _resolveAsDirectory(id:string, root:Path):ResolveResult {
-    var base = root.resolve( id ),
-        file = base.resolve('package.json');
+    let base = root.resolve( id );
+    let file = base.resolve('package.json');
 
     let core;
     if ( (core = isResource(file)) || Files.exists(file)) {
@@ -94,7 +96,7 @@ namespace Resolve {
 
     if ( file.isAbsolute() ) {
       if (!Files.exists(file)) return Resolve.asDirectory(id, root);
-    } else {
+    } else  {
       file = root.resolve(name).normalize();
     }
     let core;
@@ -126,7 +128,7 @@ namespace Resolve {
       // TODO: I think this is not very efficient
       return new Scanner(input).useDelimiter("\\A").next();
     } catch(e) {
-      throw new ModuleError("Cannot read file ["+input+"]: ", "IO_ERROR", e);
+      throw new ModuleError("Cannot read file :" + input, "IO_ERROR", e);
     }
   }
 
@@ -152,13 +154,13 @@ namespace Resolve {
   function findRoot(parent:Module):string {
       if (!parent || !parent.id) return Require.root;
 
-      var path = Paths.get( parent.id.toString() );
+      var path = Paths.get( parent.id.toString() ).getParent();
 
-      return path.getParent().toString() || "";
+      return (path) ? path.toString() : "";
   }
 
-  export function loadJSON(file:string) {
-      let json = JSON.parse(Resolve.readFile(file));
+  export function loadJSON(file:string, core?:boolean) {
+      let json = JSON.parse(Resolve.readFile(file, core));
       Require.cache[file] = json;
       return json;
   }
@@ -215,7 +217,7 @@ ModuleError.prototype.constructor = ModuleError;
 class Module {
 
   children = [];
-  filename;
+  filename:string;
   loaded = false;
   require:Function;
   main:boolean;
@@ -230,11 +232,11 @@ class Module {
     this._exports = val;
   }
 
-  static _load(file:string, parent, core:boolean, main?:boolean) {
+  static _load(file:string, parent:Module, core:boolean, main?:boolean) {
     var module = new Module(file, parent, core);
     var __FILENAME__ = module.filename;
     var body   = Resolve.readFile(module.filename, module.core),
-        dir    = new java.io.File(module.filename).getParent(),
+        dir    = Paths.get(module.filename).getParent(),
         args   = ['exports', 'module', 'require', '__filename', '__dirname'],
         func   = new Function(args, body);
     func.apply(module,
@@ -250,7 +252,7 @@ class Module {
   }
 
   constructor( public id:string|Path, private parent:Module, private core:boolean) {
-    this.filename = id;
+    this.filename = id.toString();
 
     this.exports = {};
 
@@ -290,23 +292,24 @@ class Require {
   };
 
   constructor(id:string, parent:Module) {
+    let ERR_MSG = 'cannot load module ';
+
     var file = Require.resolve(id, parent);
 
     if (!file) {
       if (typeof NativeRequire.require === 'function') {
 
-        if (Debug.isEnabled()) print('cannot resolve', id, 'defaulting to native');
+        if (Debug.isEnabled()) print(ERR_MSG, id, 'defaulting to native');
 
         try {
             var native = NativeRequire.require(id);
             if (native) return native;
         } catch(e) {
-          throw new ModuleError("cannot load module " + id, "MODULE_NOT_FOUND");
+          throw new ModuleError(ERR_MSG + id, "MODULE_NOT_FOUND");
         }
       }
-      if (Debug.isEnabled()) print("cannot load module ", id);
 
-      throw new ModuleError("cannot load module " + id, "MODULE_NOT_FOUND");
+      throw new ModuleError(ERR_MSG + id, "MODULE_NOT_FOUND");
     }
 
     try {
@@ -315,13 +318,13 @@ class Require {
       } else if (String(file.path).endsWith('.js')) {
         return Module._load(file.path, parent, file.core);
       } else if (String(file.path).endsWith('.json')) {
-        return Resolve.loadJSON(file.path);
+        return Resolve.loadJSON(file.path, file.core);
       }
     } catch(ex) {
       if (ex instanceof java.lang.Exception) {
-        throw new ModuleError("Cannot load module " + id, "LOAD_ERROR", ex);
+        throw new ModuleError(ERR_MSG + id, "LOAD_ERROR", ex);
       } else {
-        System.out.println("Cannot load module " + id + " LOAD_ERROR");
+        System.out.println(ERR_MSG + id + " LOAD_ERROR");
         throw ex;
       }
     }

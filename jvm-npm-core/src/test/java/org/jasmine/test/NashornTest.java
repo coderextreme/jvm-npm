@@ -35,21 +35,16 @@ import static java.lang.String.format;
  * @author softphone
  */
 public class NashornTest {
-	final String javascriptDir = Paths.get("src","test","javascript").toString();
+	final String javascriptDir 			= Paths.get("src","test","javascript").toString();
     
 	final Path jasmine					= Paths.get( javascriptDir, "jvm-jasmine.js");  
     final Path npmRequireSpecs			= Paths.get( javascriptDir,	"specs", "npm-requireSpec.js");
     final Path npmCLRequireSpecs		= Paths.get( javascriptDir,	"specs", "npm-cl-requireSpec.js");
-	final Path nativeRequireSpecs		= Paths.get( javascriptDir,	"specs", "native-requireSpec.js");
-	final Path npmNativeRequireSpecs	= Paths.get( javascriptDir,	"specs", "npm-native-requireSpec.js");
     
     ScriptEngineManager manager;
 
-    @Ignore
-    @Test
-    public void dummy() {
-
-    }
+    @Test @Ignore
+    public void dummy() {}
 
     String prevUserDir ;
     

@@ -35,7 +35,7 @@ and in your code load module
 	
 	final ScriptEngine service = manager.getEngineByName("nashorn");
 	
-	service.eval( "load('classpath:jvm-cl-npm.js');");
+	service.eval( "load('classpath:jvm-npm.js');");
 ```
 
 ### Rhino
@@ -66,7 +66,7 @@ and in your code load module
 	
 	final ScriptEngine service = manager.getEngineByName("rhino-npm");
 	
-	service.eval( "load('classpath:jvm-cl-npm.js');");
+	service.eval( "load('classpath:jvm-npm.js');");
 ```
     
 #### JDK7

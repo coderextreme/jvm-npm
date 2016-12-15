@@ -63,16 +63,6 @@
                   <type>js</type>
                 </artifact>
                 <artifact>
-                  <file>src/main/typescript/dist/jvm-cl-npm.js</file>
-                  <type>js</type>
-                  <classifier>cl</classifier>
-                </artifact>
-                <artifact>
-                  <file>src/main/typescript/dist/jvm-npm-legacy.js</file>
-                  <type>js</type>
-                  <classifier>legacy</classifier>
-                </artifact>
-                <artifact>
                   <file>src/test/javascript/jvm-jasmine.js</file>
                   <type>js</type>
                   <classifier>jasmine</classifier>

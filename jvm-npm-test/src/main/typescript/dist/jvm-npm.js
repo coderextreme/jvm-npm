@@ -48,13 +48,16 @@ var Resolve;
 (function (Resolve) {
     var classloader = Thread.currentThread().getContextClassLoader();
     function _resolveAsNodeModule(id, root) {
+        if (!root)
+            return;
         var base = root.resolve('node_modules');
         return Resolve.asFile(id, base) ||
             Resolve.asDirectory(id, base) ||
-            (root ? Resolve.asNodeModule(id, root.getParent()) : undefined);
+            Resolve.asNodeModule(id, root.getParent());
     }
     function _resolveAsDirectory(id, root) {
-        var base = root.resolve(id), file = base.resolve('package.json');
+        var base = root.resolve(id);
+        var file = base.resolve('package.json');
         var core;
         if ((core = isResource(file)) || Files.exists(file)) {
             try {
@@ -106,7 +109,7 @@ var Resolve;
             return new Scanner(input).useDelimiter("\\A").next();
         }
         catch (e) {
-            throw new ModuleError("Cannot read file [" + input + "]: ", "IO_ERROR", e);
+            throw new ModuleError("Cannot read file :" + input, "IO_ERROR", e);
         }
     }
     function isResource(id) {
@@ -129,11 +132,11 @@ var Resolve;
     function findRoot(parent) {
         if (!parent || !parent.id)
             return Require.root;
-        var path = Paths.get(parent.id.toString());
-        return path.getParent().toString() || "";
+        var path = Paths.get(parent.id.toString()).getParent();
+        return (path) ? path.toString() : "";
     }
-    function loadJSON(file) {
-        var json = JSON.parse(Resolve.readFile(file));
+    function loadJSON(file, core) {
+        var json = JSON.parse(Resolve.readFile(file, core));
         Require.cache[file] = json;
         return json;
     }
@@ -191,7 +194,7 @@ var Module = (function () {
         this.core = core;
         this.children = [];
         this.loaded = false;
-        this.filename = id;
+        this.filename = id.toString();
         this.exports = {};
         if (parent && parent.children)
             parent.children.push(this);
@@ -213,7 +216,7 @@ var Module = (function () {
     Module._load = function (file, parent, core, main) {
         var module = new Module(file, parent, core);
         var __FILENAME__ = module.filename;
-        var body = Resolve.readFile(module.filename, module.core), dir = new java.io.File(module.filename).getParent(), args = ['exports', 'module', 'require', '__filename', '__dirname'], func = new Function(args, body);
+        var body = Resolve.readFile(module.filename, module.core), dir = Paths.get(module.filename).getParent(), args = ['exports', 'module', 'require', '__filename', '__dirname'], func = new Function(args, body);
         func.apply(module, [module.exports, module, module.require, module.filename, dir]);
         module.loaded = true;
         module.main = main;
@@ -227,23 +230,22 @@ var Module = (function () {
 }());
 var Require = (function () {
     function Require(id, parent) {
+        var ERR_MSG = 'cannot load module ';
         var file = Require.resolve(id, parent);
         if (!file) {
             if (typeof NativeRequire.require === 'function') {
                 if (Debug.isEnabled())
-                    print('cannot resolve', id, 'defaulting to native');
+                    print(ERR_MSG, id, 'defaulting to native');
                 try {
                     var native = NativeRequire.require(id);
                     if (native)
                         return native;
                 }
                 catch (e) {
-                    throw new ModuleError("cannot load module " + id, "MODULE_NOT_FOUND");
+                    throw new ModuleError(ERR_MSG + id, "MODULE_NOT_FOUND");
                 }
             }
-            if (Debug.isEnabled())
-                print("cannot load module ", id);
-            throw new ModuleError("cannot load module " + id, "MODULE_NOT_FOUND");
+            throw new ModuleError(ERR_MSG + id, "MODULE_NOT_FOUND");
         }
         try {
             if (Require.cache[file.path]) {
@@ -253,15 +255,15 @@ var Require = (function () {
                 return Module._load(file.path, parent, file.core);
             }
             else if (String(file.path).endsWith('.json')) {
-                return Resolve.loadJSON(file.path);
+                return Resolve.loadJSON(file.path, file.core);
             }
         }
         catch (ex) {
             if (ex instanceof java.lang.Exception) {
-                throw new ModuleError("Cannot load module " + id, "LOAD_ERROR", ex);
+                throw new ModuleError(ERR_MSG + id, "LOAD_ERROR", ex);
             }
             else {
-                System.out.println("Cannot load module " + id + " LOAD_ERROR");
+                System.out.println(ERR_MSG + id + " LOAD_ERROR");
                 throw ex;
             }
         }

@@ -17,7 +17,10 @@ var cwd = Paths.get(
 System.setProperty('user.dir', cwd); // set current dir
 
 // Load the NPM module loader into the global scope
-load('src/main/typescript/dist/jvm-cl-npm.js');
+load('src/main/typescript/dist/jvm-npm.js');
+
+require.root = "";
+require.paths = [];
 
 load('src/test/javascript/jvm-jasmine.js');
 
@@ -63,7 +66,7 @@ describe("NPM global require()", function() {
   });
 
   it("should throw an Error if a file can't be found", function() {
-    expect(function() {require('./not_found.js');}).toThrow(new Error('Cannot find module ./not_found.js'));
+    expect(function() {require('./not_found.js');}).toThrow(new Error('cannot load module ./not_found.js'));
     try {
       require('./not_found.js');
     } catch(e) {
@@ -236,12 +239,12 @@ describe("Path management", function() {
 
 describe("The Module module", function() {
   it('should exist', function() {
-    var Module = require('jvm-cl-npm');
+    var Module = require('jvm-npm');
     expect(Module).toBeTruthy();
   });
 
   it('should have a runMain function', function() {
-    var Module = require('jvm-cl-npm');
+    var Module = require('jvm-npm');
     expect(typeof Module.runMain).toBe('function');
   });
 });
