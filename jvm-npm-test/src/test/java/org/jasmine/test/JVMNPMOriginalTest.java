@@ -64,7 +64,7 @@ public class JVMNPMOriginalTest {
     }
      
     @Test
-    public void rhino_jsr223_npm_js_test() throws ScriptException{
+    public void rhino_jsr223_test() throws ScriptException{
         final ScriptEngine rhino = manager.getEngineByName("rhino-npm");
 
         Assert.assertThat(rhino , IsNull.notNullValue());
@@ -86,6 +86,16 @@ public class JVMNPMOriginalTest {
         
         //Assert.assertThat( o, IsNull.notNullValue());
         //Assert.assertThat( String.valueOf(o), IsEqual.equalTo("HELLO MODULE LOADED FORM CLASSPATH"));
+    }
+    
+    @Test
+    public void rhino_classloader_jsr223_test() throws ScriptException{
+        final ScriptEngine rhino = manager.getEngineByName("rhino-npm");
+
+        Assert.assertThat(rhino , IsNull.notNullValue());
+        
+        rhino.eval( "load('classpath:rhino-requireSpecCL.js');" );
+      
     }
     
 
