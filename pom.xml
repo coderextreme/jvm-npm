@@ -146,6 +146,7 @@
 	<modules>
 		<module>jvm-npm-rhino</module>
 		<module>jvm-npm-core</module>
+		<module>jvm-npm-test</module>
 	</modules>
 
 	<profiles>
