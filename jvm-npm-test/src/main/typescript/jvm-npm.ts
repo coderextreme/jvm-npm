@@ -21,12 +21,12 @@ namespace Debug {
   class Defer<T> {
 
     // call and No Print Result
-    callNPR( cb:(() => T) ):T {
+    call( cb:(() => T) ):T {
       return call( cb );
     }
 
     // call and Print Result
-    callPR( cb:(() => T) ):T {
+    trace( cb:(() => T) ):T {
       let result =  call( cb );
       if( isEnabled() ) print( repeat(indents), "result:", result );
       return result;
@@ -104,7 +104,7 @@ namespace Resolve {
 
       let result = file.toFile().getCanonicalPath();
 
-      if( Debug.isEnabled()||true ) print( "result:", relativeToRoot(file) );
+      if( Debug.isEnabled() ) print( "result:", relativeToRoot(file) );
 
       return {path:result};
     }
@@ -148,8 +148,7 @@ namespace Resolve {
 
   export function findRoots(parent:Module) {
       var r = [];
-      let p = findRoot( parent );
-      if( p ) r.push( p );
+      r.push( findRoot( parent ) );
       return r.concat( Require.paths );
   }
 
@@ -158,7 +157,7 @@ namespace Resolve {
 
       var path = Paths.get( parent.id.toString() );
 
-      return path.getParent().toString() || undefined;
+      return path.getParent().toString() || "";
   }
 
   export function loadJSON(file:string) {
@@ -175,38 +174,32 @@ namespace Resolve {
   }
 
   export function asFile(id:string, root:Path, ext?:string):ResolveResult {
-      return Debug.decorate<ResolveResult>( "resolveAsFile", id, root, ext  ).callPR( () => {
-        return _resolveAsFile( id, root, ext );
-      });
+      return Debug.decorate<ResolveResult>( "resolveAsFile", id, root, ext  )
+        .trace( () => _resolveAsFile( id, root, ext ) );
   }
 
   export function asDirectory(id:string, root:Path):ResolveResult  {
-    return Debug.decorate<ResolveResult>( "resolveAsDirectory", id, root ).callPR( () => {
-      return _resolveAsDirectory( id, root );
-    });
+    return Debug.decorate<ResolveResult>( "resolveAsDirectory", id, root )
+      .trace( () => _resolveAsDirectory( id, root ) );
   }
 
   export function asNodeModule(id:string, root:Path):ResolveResult  {
-    return Debug.decorate<ResolveResult>( "resolveAsNodeModule", id, root ).callPR( () => {
-      return _resolveAsNodeModule( id, root );
-    });
+    return Debug.decorate<ResolveResult>( "resolveAsNodeModule", id, root )
+      .trace( () => _resolveAsNodeModule( id, root ) );
   }
 
   export function asCoreModule(id:string, root:Path):ResolveResult {
-    return Debug.decorate<ResolveResult>( "resolveAsCoreModule", id, root ).callPR( () => {
-      return _resolveAsCoreModule( id, root );
-    });
+    return Debug.decorate<ResolveResult>( "resolveAsCoreModule", id, root )
+      .trace( () => _resolveAsCoreModule( id, root ) );
   }
 
   export function readFile(filename:string|Path, core?:boolean) {
     let path = filename.toString();
-    return Debug.decorate<any>( "readFile", path, core ).callNPR( () => {
-      return _readFile(path, core);
-    });
+    return Debug.decorate<any>( "readFile", path, core )
+      .call( () => _readFile(path, core) );
   }
 
 }
-
 
 NativeRequire = (typeof NativeRequire === 'undefined') ? {} : NativeRequire;
 if (typeof require === 'function' && !NativeRequire.require) {

@@ -6,10 +6,10 @@ var Debug;
     var Defer = (function () {
         function Defer() {
         }
-        Defer.prototype.callNPR = function (cb) {
+        Defer.prototype.call = function (cb) {
             return call(cb);
         };
-        Defer.prototype.callPR = function (cb) {
+        Defer.prototype.trace = function (cb) {
             var result = call(cb);
             if (isEnabled())
                 print(repeat(indents), "result:", result);
@@ -82,7 +82,7 @@ var Resolve;
         }
         if (Files.exists(file)) {
             var result = file.toFile().getCanonicalPath();
-            if (Debug.isEnabled() || true)
+            if (Debug.isEnabled())
                 print("result:", relativeToRoot(file));
             return { path: result };
         }
@@ -120,9 +120,7 @@ var Resolve;
     }
     function findRoots(parent) {
         var r = [];
-        var p = findRoot(parent);
-        if (p)
-            r.push(p);
+        r.push(findRoot(parent));
         return r.concat(Require.paths);
     }
     Resolve.findRoots = findRoots;
@@ -130,7 +128,7 @@ var Resolve;
         if (!parent || !parent.id)
             return Require.root;
         var path = Paths.get(parent.id.toString());
-        return path.getParent().toString() || undefined;
+        return path.getParent().toString() || "";
     }
     function loadJSON(file) {
         var json = JSON.parse(Resolve.readFile(file));
@@ -146,34 +144,29 @@ var Resolve;
         return fileName + ext;
     }
     function asFile(id, root, ext) {
-        return Debug.decorate("resolveAsFile", id, root, ext).callPR(function () {
-            return _resolveAsFile(id, root, ext);
-        });
+        return Debug.decorate("resolveAsFile", id, root, ext)
+            .trace(function () { return _resolveAsFile(id, root, ext); });
     }
     Resolve.asFile = asFile;
     function asDirectory(id, root) {
-        return Debug.decorate("resolveAsDirectory", id, root).callPR(function () {
-            return _resolveAsDirectory(id, root);
-        });
+        return Debug.decorate("resolveAsDirectory", id, root)
+            .trace(function () { return _resolveAsDirectory(id, root); });
     }
     Resolve.asDirectory = asDirectory;
     function asNodeModule(id, root) {
-        return Debug.decorate("resolveAsNodeModule", id, root).callPR(function () {
-            return _resolveAsNodeModule(id, root);
-        });
+        return Debug.decorate("resolveAsNodeModule", id, root)
+            .trace(function () { return _resolveAsNodeModule(id, root); });
     }
     Resolve.asNodeModule = asNodeModule;
     function asCoreModule(id, root) {
-        return Debug.decorate("resolveAsCoreModule", id, root).callPR(function () {
-            return _resolveAsCoreModule(id, root);
-        });
+        return Debug.decorate("resolveAsCoreModule", id, root)
+            .trace(function () { return _resolveAsCoreModule(id, root); });
     }
     Resolve.asCoreModule = asCoreModule;
     function readFile(filename, core) {
         var path = filename.toString();
-        return Debug.decorate("readFile", path, core).callNPR(function () {
-            return _readFile(path, core);
-        });
+        return Debug.decorate("readFile", path, core)
+            .call(function () { return _readFile(path, core); });
     }
     Resolve.readFile = readFile;
 })(Resolve || (Resolve = {}));

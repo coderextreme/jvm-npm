@@ -58,8 +58,6 @@ public class JVMNPMOriginalTest {
 
         Assert.assertThat(nashorn , IsNull.notNullValue());
 
-        //System.setProperty("jvm-npm.debug", Boolean.toString(true));
-       
         nashorn.eval( format("load('%s');", nashornRequireSpecs) );
 
         
