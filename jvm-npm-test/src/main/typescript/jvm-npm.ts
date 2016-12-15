@@ -121,7 +121,7 @@ namespace Resolve {
       if (core) {
         input = classloader.getResourceAsStream(filename);
       } else {
-        input = new java.io.File(filename);
+        input = new java.io.FileInputStream(filename);
       }
       // TODO: I think this is not very efficient
       return new Scanner(input).useDelimiter("\\A").next();

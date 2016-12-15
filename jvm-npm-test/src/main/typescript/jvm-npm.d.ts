@@ -13,6 +13,7 @@ declare namespace java {
     }
     namespace io {
         var File: any;
+        var FileInputStream: any;
     }
     namespace nio {
         namespace file {

@@ -101,7 +101,7 @@ var Resolve;
                 input = classloader.getResourceAsStream(filename);
             }
             else {
-                input = new java.io.File(filename);
+                input = new java.io.FileInputStream(filename);
             }
             return new Scanner(input).useDelimiter("\\A").next();
         }
