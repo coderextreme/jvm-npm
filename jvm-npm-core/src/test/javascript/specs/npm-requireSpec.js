@@ -9,22 +9,23 @@ var Paths = java.nio.file.Paths,
         ;
 
 var cwd = Paths.get(
-            System.getProperty('user.dir'),
-           'src/test/javascript/specs')
-           .toString()
-            ;
-
-var home = System.getProperty('user.home');
+        System.getProperty('user.dir'),
+       'src/test/javascript/specs')
+       .toString()
+        ;
 
 System.setProperty('user.dir', cwd); // set current dir
 
-// Load the NPM module loader into the global scope
+//Load the NPM module loader into the global scope
 load('src/main/typescript/dist/jvm-npm.js');
 
 require.root = cwd;
+
+//var home = System.getProperty('user.home');
+
 require.paths = [
-    Paths.get(home,".node_modules").toString(),
-    Paths.get(home,".node_libraries").toString()
+	//Paths.get(home,".node_modules").toString(),
+	//Paths.get(home,".node_libraries").toString()
 ];
 
 

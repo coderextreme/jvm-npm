@@ -24,15 +24,14 @@ import org.junit.Test;
 
 /**
  *
- * @author softphone
+ * @author bsorrentino
  */
+@Ignore
 public class DynjsTest {
 
-   @Ignore
+	@Ignore
     @Test
-    public void dummy() {
-
-    }
+    public void dummy() {}
 
     String prevUserDir ;
     
@@ -61,7 +60,7 @@ public class DynjsTest {
 
         dynjs.evaluate("require.addLoadPath('/')");
         dynjs.evaluate("load('src/test/javascript/jvm-jasmine.js');");
-        dynjs.evaluate("load('src/test/javascript/specs/npm-legacy-requireSpec.js');");
+        dynjs.evaluate("load('src/test/javascript/specs/npm-requireSpec.js');");
 
         dynjs.evaluate("report();");
 
