@@ -70,9 +70,10 @@ namespace Resolve {
     var base = root.resolve( id ),
         file = base.resolve('package.json');
 
-    if (Files.exists(file)) {
+    let core;
+    if ( (core = isResource(file)) || Files.exists(file)) {
       try {
-        var body = Resolve.readFile(file),
+        var body = Resolve.readFile(file, core),
             package  = JSON.parse(body);
         if (package.main) {
           return (Resolve.asFile(package.main, base) ||
@@ -92,28 +93,25 @@ namespace Resolve {
     let file = Paths.get(name);
 
     if ( file.isAbsolute() ) {
-    //if ( id.length > 0 && id[0] === '/' ) {
-
       if (!Files.exists(file)) return Resolve.asDirectory(id, root);
-
     } else {
-
       file = root.resolve(name).normalize();
     }
-    if (Files.exists(file)) {
+    let core;
+    if ((core = isResource(file)) || Files.exists(file)) {
 
-      let result = file.toFile().getCanonicalPath();
+      let result = (core) ? file.toString() : file.toFile().getCanonicalPath();
 
-      if( Debug.isEnabled() ) print( "result:", relativeToRoot(file) );
+      if( Debug.isEnabled() ) print( "FILE:", result/*, relativeToRoot(file)*/ );
 
-      return {path:result};
+      return {path:result, core:core};
     }
   }
 
   function _resolveAsCoreModule(id:string, root:Path) {
     var name = normalizeName(id);
 
-    if (isResourceResolved(name))
+    if (isResource(name))
       return { path: name, core: true };
   }
 
@@ -132,13 +130,12 @@ namespace Resolve {
     }
   }
 
-  function isResourceResolved( id:string ):boolean {
-    var url = classloader.getResource( id );
+  function isResource( id:string|Path ):boolean {
+    var url = classloader.getResource( id.toString() );
     return url!=null;
   }
 
   function relativeToRoot( p:Path ):Path {
-
       if( p.startsWith(Require.root)) {
         let len = Paths.get(Require.root).getNameCount();
         p = p.subpath(len, p.getNameCount());//.normalize();
@@ -161,7 +158,7 @@ namespace Resolve {
   }
 
   export function loadJSON(file:string) {
-      var json = JSON.parse(Resolve.readFile(file));
+      let json = JSON.parse(Resolve.readFile(file));
       Require.cache[file] = json;
       return json;
   }

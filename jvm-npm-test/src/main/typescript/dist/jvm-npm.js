@@ -55,9 +55,10 @@ var Resolve;
     }
     function _resolveAsDirectory(id, root) {
         var base = root.resolve(id), file = base.resolve('package.json');
-        if (Files.exists(file)) {
+        var core;
+        if ((core = isResource(file)) || Files.exists(file)) {
             try {
-                var body = Resolve.readFile(file), package = JSON.parse(body);
+                var body = Resolve.readFile(file, core), package = JSON.parse(body);
                 if (package.main) {
                     return (Resolve.asFile(package.main, base) ||
                         Resolve.asDirectory(package.main, base));
@@ -80,16 +81,17 @@ var Resolve;
         else {
             file = root.resolve(name).normalize();
         }
-        if (Files.exists(file)) {
-            var result = file.toFile().getCanonicalPath();
+        var core;
+        if ((core = isResource(file)) || Files.exists(file)) {
+            var result = (core) ? file.toString() : file.toFile().getCanonicalPath();
             if (Debug.isEnabled())
-                print("result:", relativeToRoot(file));
-            return { path: result };
+                print("FILE:", result);
+            return { path: result, core: core };
         }
     }
     function _resolveAsCoreModule(id, root) {
         var name = normalizeName(id);
-        if (isResourceResolved(name))
+        if (isResource(name))
             return { path: name, core: true };
     }
     function _readFile(filename, core) {
@@ -107,8 +109,8 @@ var Resolve;
             throw new ModuleError("Cannot read file [" + input + "]: ", "IO_ERROR", e);
         }
     }
-    function isResourceResolved(id) {
-        var url = classloader.getResource(id);
+    function isResource(id) {
+        var url = classloader.getResource(id.toString());
         return url != null;
     }
     function relativeToRoot(p) {
