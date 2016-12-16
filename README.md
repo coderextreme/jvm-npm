@@ -11,7 +11,8 @@ full **node.js** API, so don't expect all of the standard NPM modules that depen
 
 If you are writing your own NPM modules in [DynJS](http://dynjs.org/), [Rhino](https://github.com/mozilla/rhino) or [Nashorn](http://www.oracle.com/technetwork/articles/java/jf14-nashorn-2126515.html), this should work just fine.
 
-DynJS implementaion is currently considered **legacy**, Is suggested to use it with **Rhino** and/or **Nashorn**
+Note:
+> DynJS implementation is currently considered **legacy**, so it is suggested to use it with **Rhino** and/or **Nashorn**
 
 ## Usage
 
