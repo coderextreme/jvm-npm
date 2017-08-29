@@ -39,7 +39,6 @@ namespace Debug {
     return result;
   }
 
-
 } // Debug
 
 function debuggable( log_result:boolean = true ) {
@@ -63,7 +62,8 @@ const classloader = Thread.currentThread().getContextClassLoader();
 
 class Resolve {
 
-  static _resolveAsNodeModule(id:string, root:Path):ResolveResult {
+  @debuggable()
+  static asNodeModule(id:string, root:Path):ResolveResult  {
     if( !root ) return;
 
     var base = root.resolve('node_modules');
@@ -72,7 +72,9 @@ class Resolve {
       Resolve.asNodeModule(id, root.getParent());
   }
 
-  static _resolveAsDirectory(id:string, root:Path):ResolveResult {
+  @debuggable()
+  static asDirectory(id:string, root:Path):ResolveResult  {
+
     let base = root.resolve( id );
     let file = base.resolve('package.json');
 
@@ -94,7 +96,8 @@ class Resolve {
     return Resolve.asFile('index.js', base);
   }
 
-  static _resolveAsFile(id:string, root:Path, ext?:string):ResolveResult {
+  @debuggable()
+  static asFile(id:string, root:Path, ext?:string):ResolveResult {
     let name = Resolve.normalizeName(id, ext || '.js');
     let file = Paths.get(name);
 
@@ -114,21 +117,26 @@ class Resolve {
     }
   }
 
-  static _resolveAsCoreModule(id:string, root:Path):ResolveResult|undefined {
+  @debuggable()
+  static asCoreModule(id:string, root:Path):ResolveResult|undefined {
     var name = Resolve.normalizeName(id);
 
     if (Resolve.isResource(name))
       return { path: name, core: true };
   }
 
-  static _readFile(filename:string, core?:boolean):string {
+  @debuggable(false /*log_result*/)
+  static readFile(filename:string|Path, core?:boolean) {
+    
+    let path = filename.toString();
+  
     var input;
     try {
-      if (core) {
-        input = classloader.getResourceAsStream(filename);
-      } else {
-        input = new java.io.FileInputStream(filename);
-      }
+  
+      input = (core) ?
+        classloader.getResourceAsStream(path) :
+        new java.io.FileInputStream(path);
+  
       // TODO: I think this is not very efficient
       return new Scanner(input).useDelimiter("\\A").next();
     } catch(e) {
@@ -174,32 +182,6 @@ class Resolve {
         return fileName;
       }
       return fileName + ext;
-  }
-
-  @debuggable()
-  static asFile(id:string, root:Path, ext?:string):ResolveResult {
-      return Resolve._resolveAsFile( id, root, ext );
-  }
-
-  @debuggable()
-  static asDirectory(id:string, root:Path):ResolveResult  {
-    return Resolve._resolveAsDirectory( id, root );
-  }
-
-  @debuggable()
-  static asNodeModule(id:string, root:Path):ResolveResult  {
-    return  Resolve._resolveAsNodeModule( id, root );
-  }
-
-  @debuggable()
-  static asCoreModule(id:string, root:Path):ResolveResult {
-    return Resolve._resolveAsCoreModule( id, root );
-  }
-
-  @debuggable(false /*log_result*/)
-  static readFile(filename:string|Path, core?:boolean) {
-    let path = filename.toString();
-    return Resolve._readFile(path, core);
   }
 
 }
