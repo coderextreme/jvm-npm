@@ -1,31 +1,30 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 module = (typeof module == 'undefined') ? {} : module;
 var System = java.lang.System, Scanner = java.util.Scanner, Paths = java.nio.file.Paths, Files = java.nio.file.Files, Thread = java.lang.Thread;
 var Debug;
 (function (Debug) {
     var indents = 0;
-    var Defer = (function () {
-        function Defer() {
-        }
-        Defer.prototype.call = function (cb) {
-            return call(cb);
-        };
-        Defer.prototype.trace = function (cb) {
-            var result = call(cb);
-            if (isEnabled())
-                print(repeat(indents), "result:", result);
-            return result;
-        };
-        return Defer;
-    }());
     function isEnabled() {
         return java.lang.Boolean.getBoolean("jvm-npm.debug");
     }
-    Debug.isEnabled = isEnabled;
-    function repeat(n, ch) {
+    function log(arg1, arg2, arg3) {
+        if (isEnabled())
+            print(indent(), arg1, arg2, (!arg3) ? "" : arg3);
+    }
+    Debug.log = log;
+    function indent(ch) {
         if (ch === void 0) { ch = "-"; }
-        if (n <= 0)
+        if (indents <= 0)
             return ">";
-        return new Array(n * 4).join(ch);
+        return new Array(indents * 4).join(ch);
     }
     function call(cb) {
         ++indents;
@@ -33,38 +32,49 @@ var Debug;
         --indents;
         return result;
     }
-    function decorate(name) {
-        var args = [];
-        for (var _i = 1; _i < arguments.length; _i++) {
-            args[_i - 1] = arguments[_i];
-        }
-        if (isEnabled())
-            print(repeat(indents), name, args);
-        return new Defer();
-    }
-    Debug.decorate = decorate;
+    Debug.call = call;
 })(Debug || (Debug = {}));
-var Resolve;
-(function (Resolve) {
-    var classloader = Thread.currentThread().getContextClassLoader();
-    function _resolveAsNodeModule(id, root) {
+function debuggable(log_result) {
+    if (log_result === void 0) { log_result = true; }
+    return function (target, key, descriptor) {
+        return {
+            value: function () {
+                var args = [];
+                for (var _i = 0; _i < arguments.length; _i++) {
+                    args[_i] = arguments[_i];
+                }
+                Debug.log(key, args);
+                var result = Debug.call(function () { return descriptor.value.apply(target, args); });
+                Debug.log(key, "result", (log_result) ?
+                    ((!result) ? "undefined" : result) :
+                    typeof result);
+                return result;
+            }
+        };
+    };
+}
+var classloader = Thread.currentThread().getContextClassLoader();
+var Resolve = (function () {
+    function Resolve() {
+    }
+    Resolve.asNodeModule = function (id, root) {
         if (!root)
             return;
         var base = root.resolve('node_modules');
         return Resolve.asFile(id, base) ||
             Resolve.asDirectory(id, base) ||
             Resolve.asNodeModule(id, root.getParent());
-    }
-    function _resolveAsDirectory(id, root) {
+    };
+    Resolve.asDirectory = function (id, root) {
         var base = root.resolve(id);
         var file = base.resolve('package.json');
         var core;
-        if ((core = isResource(file)) || Files.exists(file)) {
+        if ((core = Resolve.isResource(file)) || Files.exists(file)) {
             try {
-                var body = Resolve.readFile(file, core), package = JSON.parse(body);
-                if (package.main) {
-                    return (Resolve.asFile(package.main, base) ||
-                        Resolve.asDirectory(package.main, base));
+                var body = Resolve.readFile(file, core), _package = JSON.parse(body);
+                if (_package.main) {
+                    return (Resolve.asFile(_package.main, base) ||
+                        Resolve.asDirectory(_package.main, base));
                 }
                 return Resolve.asFile('index.js', base);
             }
@@ -73,9 +83,9 @@ var Resolve;
             }
         }
         return Resolve.asFile('index.js', base);
-    }
-    function _resolveAsFile(id, root, ext) {
-        var name = normalizeName(id, ext || '.js');
+    };
+    Resolve.asFile = function (id, root, ext) {
+        var name = Resolve.normalizeName(id, ext || '.js');
         var file = Paths.get(name);
         if (file.isAbsolute()) {
             if (!Files.exists(file))
@@ -85,96 +95,96 @@ var Resolve;
             file = root.resolve(name).normalize();
         }
         var core;
-        if ((core = isResource(file)) || Files.exists(file)) {
+        if ((core = Resolve.isResource(file)) || Files.exists(file)) {
             var result = (core) ? file.toString() : file.toFile().getCanonicalPath();
-            if (Debug.isEnabled())
-                print("FILE:", result);
+            Debug.log("file:", result);
             return { path: result, core: core };
         }
-    }
-    function _resolveAsCoreModule(id, root) {
-        var name = normalizeName(id);
-        if (isResource(name))
+    };
+    Resolve.asCoreModule = function (id, root) {
+        var name = Resolve.normalizeName(id);
+        if (Resolve.isResource(name))
             return { path: name, core: true };
-    }
-    function _readFile(filename, core) {
+    };
+    Resolve.readFile = function (filename, core) {
+        var path = filename.toString();
         var input;
         try {
-            if (core) {
-                input = classloader.getResourceAsStream(filename);
-            }
-            else {
-                input = new java.io.FileInputStream(filename);
-            }
+            input = (core) ?
+                classloader.getResourceAsStream(path) :
+                new java.io.FileInputStream(path);
             return new Scanner(input).useDelimiter("\\A").next();
         }
         catch (e) {
             throw new ModuleError("Cannot read file :" + input, "IO_ERROR", e);
         }
-    }
-    function isResource(id) {
+    };
+    Resolve.isResource = function (id) {
         var url = classloader.getResource(id.toString());
         return url != null;
-    }
-    function relativeToRoot(p) {
+    };
+    Resolve.relativeToRoot = function (p) {
         if (p.startsWith(Require.root)) {
             var len = Paths.get(Require.root).getNameCount();
             p = p.subpath(len, p.getNameCount());
         }
         return p;
-    }
-    function findRoots(parent) {
+    };
+    Resolve.findRoots = function (parent) {
         var r = [];
-        r.push(findRoot(parent));
+        r.push(Resolve.findRoot(parent));
         return r.concat(Require.paths);
-    }
-    Resolve.findRoots = findRoots;
-    function findRoot(parent) {
+    };
+    Resolve.findRoot = function (parent) {
         if (!parent || !parent.id)
             return Require.root;
         var path = Paths.get(parent.id.toString()).getParent();
         return (path) ? path.toString() : "";
-    }
-    function loadJSON(file, core) {
+    };
+    Resolve.loadJSON = function (file, core) {
         var json = JSON.parse(Resolve.readFile(file, core));
         Require.cache[file] = json;
         return json;
-    }
-    Resolve.loadJSON = loadJSON;
-    function normalizeName(fileName, ext) {
+    };
+    Resolve.normalizeName = function (fileName, ext) {
         if (ext === void 0) { ext = '.js'; }
         if (String(fileName).endsWith(ext)) {
             return fileName;
         }
         return fileName + ext;
-    }
-    function asFile(id, root, ext) {
-        return Debug.decorate("resolveAsFile", id, root, ext)
-            .trace(function () { return _resolveAsFile(id, root, ext); });
-    }
-    Resolve.asFile = asFile;
-    function asDirectory(id, root) {
-        return Debug.decorate("resolveAsDirectory", id, root)
-            .trace(function () { return _resolveAsDirectory(id, root); });
-    }
-    Resolve.asDirectory = asDirectory;
-    function asNodeModule(id, root) {
-        return Debug.decorate("resolveAsNodeModule", id, root)
-            .trace(function () { return _resolveAsNodeModule(id, root); });
-    }
-    Resolve.asNodeModule = asNodeModule;
-    function asCoreModule(id, root) {
-        return Debug.decorate("resolveAsCoreModule", id, root)
-            .trace(function () { return _resolveAsCoreModule(id, root); });
-    }
-    Resolve.asCoreModule = asCoreModule;
-    function readFile(filename, core) {
-        var path = filename.toString();
-        return Debug.decorate("readFile", path, core)
-            .call(function () { return _readFile(path, core); });
-    }
-    Resolve.readFile = readFile;
-})(Resolve || (Resolve = {}));
+    };
+    __decorate([
+        debuggable(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", [String, Object]),
+        __metadata("design:returntype", Object)
+    ], Resolve, "asNodeModule", null);
+    __decorate([
+        debuggable(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", [String, Object]),
+        __metadata("design:returntype", Object)
+    ], Resolve, "asDirectory", null);
+    __decorate([
+        debuggable(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", [String, Object, String]),
+        __metadata("design:returntype", Object)
+    ], Resolve, "asFile", null);
+    __decorate([
+        debuggable(),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", [String, Object]),
+        __metadata("design:returntype", Object)
+    ], Resolve, "asCoreModule", null);
+    __decorate([
+        debuggable(false),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", [Object, Boolean]),
+        __metadata("design:returntype", void 0)
+    ], Resolve, "readFile", null);
+    return Resolve;
+}());
 NativeRequire = (typeof NativeRequire === 'undefined') ? {} : NativeRequire;
 if (typeof require === 'function' && !NativeRequire.require) {
     NativeRequire.require = require;
@@ -234,8 +244,7 @@ var Require = (function () {
         var file = Require.resolve(id, parent);
         if (!file) {
             if (typeof NativeRequire.require === 'function') {
-                if (Debug.isEnabled())
-                    print(ERR_MSG, id, 'defaulting to native');
+                Debug.log(ERR_MSG, id, 'defaulting to native');
                 try {
                     var native = NativeRequire.require(id);
                     if (native)
@@ -269,8 +278,7 @@ var Require = (function () {
         }
     }
     Require.resolve = function (id, parent) {
-        if (Debug.isEnabled())
-            print("\n\nRESOLVE:", id);
+        Debug.log("TRY RESOLVING", id);
         var roots = Resolve.findRoots(parent);
         for (var i = 0; i < roots.length; ++i) {
             var root = Paths.get(roots[i]);
@@ -284,12 +292,12 @@ var Require = (function () {
         }
     };
     ;
+    Require.root = System.getProperty('user.dir');
+    Require.NODE_PATH = undefined;
+    Require.paths = [];
+    Require.cache = {};
+    Require.extensions = {};
     return Require;
 }());
-Require.root = System.getProperty('user.dir');
-Require.NODE_PATH = undefined;
-Require.paths = [];
-Require.cache = {};
-Require.extensions = {};
 require = Require;
 module.exports = Module;

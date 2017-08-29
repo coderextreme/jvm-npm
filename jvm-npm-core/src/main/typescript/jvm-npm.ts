@@ -16,50 +16,54 @@ var System  = java.lang.System,
 
 namespace Debug {
 
-  let indents:number = 0;
+  var indents:number = 0;
 
-  class Defer<T> {
-
-    // call and No Print Result
-    call( cb:(() => T) ):T {
-      return call( cb );
-    }
-
-    // call and Print Result
-    trace( cb:(() => T) ):T {
-      let result =  call( cb );
-      if( isEnabled() ) print( repeat(indents), "result:", result );
-      return result;
-    }
-  }
-
-  export function isEnabled():boolean {
+  function isEnabled():boolean {
       return java.lang.Boolean.getBoolean("jvm-npm.debug");
   }
 
-  function repeat(n:number, ch:string = "-"):string {
-    if( n <=0 ) return ">";
-    return new Array(n*4).join(ch);
+  export function log( arg1:any, arg2:any, arg3?:any ):void {
+    if( isEnabled() ) 
+      print( indent(), arg1, arg2, (!arg3) ? "": arg3 );
   }
 
-  function call<T>(cb:(() => T)):T {
+  function indent(ch:string = "-"):string {
+    if( indents <=0 ) return ">";
+    return new Array(indents*4).join(ch);
+  }
+
+  export function call<T>(cb:(() => T)):T {
     ++indents;
     let result = cb();
     --indents;
     return result;
   }
 
-  export function decorate<T>( name:string, ...args: any[] ):Defer<T> {
-      if( isEnabled() ) print( repeat(indents), name , args);
-      return  new Defer<T>();
-  }
-
 } // Debug
 
-namespace Resolve {
-  let classloader = Thread.currentThread().getContextClassLoader();
+function debuggable( log_result:boolean = true ) {
+  return function (target: any, key: string|symbol, descriptor: TypedPropertyDescriptor<Function>) {
+    
+    return {
+      value: function( ... args: any[]) {
+          Debug.log( key , args);
+          const result = Debug.call( () => descriptor.value.apply(target, args) );
+          Debug.log( key, "result", 
+                            ( log_result ) ? 
+                              ((!result) ? "undefined" : result) : 
+                              typeof result );
+          return result;
+      }
+    }
+  };
+}
 
-  function _resolveAsNodeModule(id:string, root:Path):ResolveResult {
+const classloader = Thread.currentThread().getContextClassLoader();
+
+class Resolve {
+
+  @debuggable()
+  static asNodeModule(id:string, root:Path):ResolveResult  {
     if( !root ) return;
 
     var base = root.resolve('node_modules');
@@ -68,18 +72,20 @@ namespace Resolve {
       Resolve.asNodeModule(id, root.getParent());
   }
 
-  function _resolveAsDirectory(id:string, root:Path):ResolveResult {
+  @debuggable()
+  static asDirectory(id:string, root:Path):ResolveResult  {
+
     let base = root.resolve( id );
     let file = base.resolve('package.json');
 
     let core;
-    if ( (core = isResource(file)) || Files.exists(file)) {
+    if ( (core = Resolve.isResource(file)) || Files.exists(file)) {
       try {
         var body = Resolve.readFile(file, core),
-            package  = JSON.parse(body);
-        if (package.main) {
-          return (Resolve.asFile(package.main, base) ||
-                  Resolve.asDirectory(package.main, base));
+            _package  = JSON.parse(body);
+        if (_package.main) {
+          return (Resolve.asFile(_package.main, base) ||
+                  Resolve.asDirectory(_package.main, base));
         }
         // if no package.main exists, look for index.js
         return Resolve.asFile('index.js', base);
@@ -90,8 +96,9 @@ namespace Resolve {
     return Resolve.asFile('index.js', base);
   }
 
-  function _resolveAsFile(id:string, root:Path, ext?:string):ResolveResult {
-    let name = normalizeName(id, ext || '.js');
+  @debuggable()
+  static asFile(id:string, root:Path, ext?:string):ResolveResult {
+    let name = Resolve.normalizeName(id, ext || '.js');
     let file = Paths.get(name);
 
     if ( file.isAbsolute() ) {
@@ -100,31 +107,36 @@ namespace Resolve {
       file = root.resolve(name).normalize();
     }
     let core;
-    if ((core = isResource(file)) || Files.exists(file)) {
+    if ((core = Resolve.isResource(file)) || Files.exists(file)) {
 
       let result = (core) ? file.toString() : file.toFile().getCanonicalPath();
 
-      if( Debug.isEnabled() ) print( "FILE:", result/*, relativeToRoot(file)*/ );
+      Debug.log( "file:", result/*, relativeToRoot(file)*/ );
 
       return {path:result, core:core};
     }
   }
 
-  function _resolveAsCoreModule(id:string, root:Path) {
-    var name = normalizeName(id);
+  @debuggable()
+  static asCoreModule(id:string, root:Path):ResolveResult|undefined {
+    var name = Resolve.normalizeName(id);
 
-    if (isResource(name))
+    if (Resolve.isResource(name))
       return { path: name, core: true };
   }
 
-  function _readFile(filename:string, core?:boolean) {
+  @debuggable(false /*log_result*/)
+  static readFile(filename:string|Path, core?:boolean) {
+    
+    let path = filename.toString();
+  
     var input;
     try {
-      if (core) {
-        input = classloader.getResourceAsStream(filename);
-      } else {
-        input = new java.io.FileInputStream(filename);
-      }
+  
+      input = (core) ?
+        classloader.getResourceAsStream(path) :
+        new java.io.FileInputStream(path);
+  
       // TODO: I think this is not very efficient
       return new Scanner(input).useDelimiter("\\A").next();
     } catch(e) {
@@ -132,12 +144,12 @@ namespace Resolve {
     }
   }
 
-  function isResource( id:string|Path ):boolean {
+  static isResource( id:string|Path ):boolean {
     var url = classloader.getResource( id.toString() );
     return url!=null;
   }
 
-  function relativeToRoot( p:Path ):Path {
+  static relativeToRoot( p:Path ):Path {
       if( p.startsWith(Require.root)) {
         let len = Paths.get(Require.root).getNameCount();
         p = p.subpath(len, p.getNameCount());//.normalize();
@@ -145,13 +157,13 @@ namespace Resolve {
       return p;
   }
 
-  export function findRoots(parent:Module) {
+  static findRoots(parent:Module) {
       var r = [];
-      r.push( findRoot( parent ) );
+      r.push( Resolve.findRoot( parent ) );
       return r.concat( Require.paths );
   }
 
-  function findRoot(parent:Module):string {
+  static findRoot(parent:Module):string {
       if (!parent || !parent.id) return Require.root;
 
       var path = Paths.get( parent.id.toString() ).getParent();
@@ -159,43 +171,17 @@ namespace Resolve {
       return (path) ? path.toString() : "";
   }
 
-  export function loadJSON(file:string, core?:boolean) {
+  static loadJSON(file:string, core?:boolean) {
       let json = JSON.parse(Resolve.readFile(file, core));
       Require.cache[file] = json;
       return json;
   }
 
-  function normalizeName(fileName:string, ext:string = '.js') {
+  static normalizeName(fileName:string, ext:string = '.js') {
       if (String(fileName).endsWith(ext)) {
         return fileName;
       }
       return fileName + ext;
-  }
-
-  export function asFile(id:string, root:Path, ext?:string):ResolveResult {
-      return Debug.decorate<ResolveResult>( "resolveAsFile", id, root, ext  )
-        .trace( () => _resolveAsFile( id, root, ext ) );
-  }
-
-  export function asDirectory(id:string, root:Path):ResolveResult  {
-    return Debug.decorate<ResolveResult>( "resolveAsDirectory", id, root )
-      .trace( () => _resolveAsDirectory( id, root ) );
-  }
-
-  export function asNodeModule(id:string, root:Path):ResolveResult  {
-    return Debug.decorate<ResolveResult>( "resolveAsNodeModule", id, root )
-      .trace( () => _resolveAsNodeModule( id, root ) );
-  }
-
-  export function asCoreModule(id:string, root:Path):ResolveResult {
-    return Debug.decorate<ResolveResult>( "resolveAsCoreModule", id, root )
-      .trace( () => _resolveAsCoreModule( id, root ) );
-  }
-
-  export function readFile(filename:string|Path, core?:boolean) {
-    let path = filename.toString();
-    return Debug.decorate<any>( "readFile", path, core )
-      .call( () => _readFile(path, core) );
   }
 
 }
@@ -273,7 +259,7 @@ class Require {
   static extensions = {};
 
   static resolve(id:string, parent?:Module):ResolveResult {
-    if( Debug.isEnabled() ) print( "\n\nRESOLVE:", id );
+    Debug.log( "TRY RESOLVING", id );
 
     var roots = Resolve.findRoots(parent);
 
@@ -292,14 +278,14 @@ class Require {
   };
 
   constructor(id:string, parent:Module) {
-    let ERR_MSG = 'cannot load module ';
+    const ERR_MSG = 'cannot load module ';
 
     var file = Require.resolve(id, parent);
 
     if (!file) {
       if (typeof NativeRequire.require === 'function') {
 
-        if (Debug.isEnabled()) print(ERR_MSG, id, 'defaulting to native');
+        Debug.log(ERR_MSG, id, 'defaulting to native');
 
         try {
             var native = NativeRequire.require(id);

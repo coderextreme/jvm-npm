@@ -49,7 +49,7 @@ interface String {
     endsWith(suffix: string): boolean;
 }
 
-interface ResolveResult {
+type ResolveResult = {
   path:string;
   core?:boolean;
 }
